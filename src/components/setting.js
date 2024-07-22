@@ -39,27 +39,45 @@ async function loadSettings() {
   return { channels: {} };
 }
 
+async function getAllChannels(client) {
+  let allChannels = [];
+  let cursor;
+  do {
+    const result = await client.conversations.list({
+      types: 'public_channel,private_channel',
+      exclude_archived: true,
+      limit: 1000,
+      cursor: cursor
+    });
+    allChannels = allChannels.concat(result.channels);
+    cursor = result.response_metadata?.next_cursor;
+  } while (cursor);
+  return allChannels;
+}
+
 export async function openSettings(client, trigger_id, user_id) {
   console.log('Received user_id:', user_id);
 
   try {
-    const result = await client.conversations.list({
-      types: 'public_channel,private_channel'
-    });
+    const allChannels = await getAllChannels(client);
+    console.log(`Total channels fetched: ${allChannels.length}`);
 
-    const channelOptions = result.channels.map(channel => ({
-      text: {
-        type: 'plain_text',
-        text: channel.name
-      },
-      value: channel.id
-    }));
+    const channelOptions = allChannels
+      .map(channel => ({
+        text: {
+          type: 'plain_text',
+          text: `${channel.name} ${channel.is_private ? '(private)' : ''}`
+        },
+        value: channel.id
+      }));
+
+    console.log(`Channels where bot is a member: ${channelOptions.length}`);
 
     const userChannels = settings.channels[user_id] || [];
 
-    const currentChannels = result.channels
+    const currentChannels = allChannels
       .filter(channel => userChannels.includes(channel.id))
-      .map(channel => channel.name)
+      .map(channel => `${channel.name} ${channel.is_private ? '(private)' : ''}`)
       .join('\n');
 
     const initialOptions = channelOptions.filter(option => userChannels.includes(option.value));
@@ -122,6 +140,10 @@ export async function openSettings(client, trigger_id, user_id) {
     console.error('Error opening settings:', error);
     if (error.data) {
       console.error('Error details:', JSON.stringify(error.data, null, 2));
+    }
+    // プライベートチャンネルへのアクセスエラーを特定
+    if (error.data && error.data.error === 'not_in_channel') {
+      console.error('Bot is not in some channels. Please invite the bot to all required channels.');
     }
   }
 }
