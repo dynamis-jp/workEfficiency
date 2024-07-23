@@ -1,17 +1,20 @@
 import schedule from 'node-schedule';
 import { getFormattedDate } from './utils.js';
 import { EventEmitter } from 'events';
+import dotenv from 'dotenv';
 
-const generalChannelId = 'C04GLB9K6HH';
+dotenv.config();
+
+const generalChannelId = process.env.REPORT_CHANNEL_ID?.trim().replace(/^['"]|['"]$/g, '');
 let generalMessageTs;
 
 const reportEmitter = new EventEmitter();
 
 function scheduleReport(app) {
   const rule = new schedule.RecurrenceRule();
-  rule.tz = 'Asia/Tokyo';
-  rule.hour = 9;
-  rule.minute = 31;
+  rule.tz = process.env.TIME_ZONE;
+  rule.hour = process.env.REPORT_HOUR;
+  rule.minute = process.env.REPORT_MINUTE;
 
   schedule.scheduleJob(rule, async function() {
     const formattedDate = getFormattedDate();
