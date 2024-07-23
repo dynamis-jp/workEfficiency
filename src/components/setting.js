@@ -119,7 +119,9 @@ export async function openSettings(client, trigger_id, user_id) {
           label: {
             type: 'plain_text',
             text: '稼働報告を送信するチャンネルを選択する'
-          }
+          },
+          // フィールドを任意にする
+          optional: true
         }
       ],
       close: {
