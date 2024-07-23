@@ -9,6 +9,7 @@ import { handleReportSubmission } from './components/transmission.js';
 import scheduleReport from './components/generalReport.js';
 import { postDailyReportMessage } from './components/appMessage.js';
 import { exec } from 'child_process';
+import { handlePost2flask } from './components/post2flask.js';
 
 const { App } = pkg;
 dotenv.config();
@@ -60,6 +61,7 @@ function setupEventHandlers(app) {
   app.view('submit_report', async ({ ack, body, view, client }) => {
     await ack();
     await handleReportSubmission(client, { user: body.user, view });
+    await handlePost2flask(client, { user: body.user, view });
   });
 
   app.view('submit_setting', async ({ ack, body, view, client }) => {
