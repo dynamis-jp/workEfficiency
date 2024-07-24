@@ -2,7 +2,7 @@ import schedule from 'node-schedule';
 import { getFormattedDate } from './utils.js';
 import { EventEmitter } from 'events';
 
-const generalChannelId = 'C04GLB9K6HH';
+const generalChannelId = 'C06UMHKK0UX';
 let generalMessageTs;
 
 const reportEmitter = new EventEmitter();
@@ -10,8 +10,8 @@ const reportEmitter = new EventEmitter();
 function scheduleReport(app) {
   const rule = new schedule.RecurrenceRule();
   rule.tz = 'Asia/Tokyo';
-  rule.hour = 9;
-  rule.minute = 31;
+  rule.hour = 10;
+  rule.minute = 37;
 
   schedule.scheduleJob(rule, async function() {
     const formattedDate = getFormattedDate();
