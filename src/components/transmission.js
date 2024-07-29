@@ -15,37 +15,16 @@ export async function handleReportSubmission(client, { user, view }) {
     console.log("userInfo:", userInfo);
     const userName = userInfo.user.profile.display_name || userInfo.user.name;
 
-    if (userChannels.length === 0) {
-      console.error('No channels set for user:', userId);
-      return;
-    }
-
-    // 全てのチャンネルに投稿
-    const messagePromises = userChannels.map(async (channelId) => {
-      const response = await client.chat.postMessage({
-        channel: channelId,
-        text: `${userName}さんの本日の稼働予定です。\n\n\`\`\`\n${report}\n\`\`\``
-      });
-      console.log(`チャンネル ${channelId} に送信しました✨`);
-      return { channelId, ts: response.ts };
-    });
-
-    const messageResults = await Promise.all(messagePromises);
-
     const postToGeneralReport = async () => {
       const generalMessageTs = getGeneralMessageTs();
       console.log('generalChannelId:', generalChannelId);
       console.log('generalMessageTs:', generalMessageTs);
 
       if (generalChannelId && generalMessageTs) {
-        const links = messageResults.map(result => 
-          `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
-        ).join(' / ');
-
         await client.chat.postMessage({
           channel: generalChannelId,
           thread_ts: generalMessageTs,
-          text: `${userName}さんの稼働報告: ${links}`
+          text: `${userName}さんの本日の稼働予定です。\n\n\`\`\`\n${report}\n\`\`\``
         });
         console.log('全体報告に送信しました🎉');
       } else {
@@ -53,13 +32,52 @@ export async function handleReportSubmission(client, { user, view }) {
       }
     };
 
-    // 全体報告のメッセージスレッドにリンクを追加
-    if (getGeneralMessageTs()) {
-      await postToGeneralReport();
-    } else {
-      reportEmitter.once('reportScheduled', async () => {
+    if (userChannels.length === 0) {
+      console.log('ユーザーのチャンネル設定がありません。全体報告にのみ投稿します。');
+      if (getGeneralMessageTs()) {
         await postToGeneralReport();
+      } else {
+        reportEmitter.once('reportScheduled', async () => {
+          await postToGeneralReport();
+        });
+      }
+    } else {
+      // 既存のチャンネル投稿ロジック
+      const messagePromises = userChannels.map(async (channelId) => {
+        const response = await client.chat.postMessage({
+          channel: channelId,
+          text: `${userName}さんの本日の稼働予定です。\n\n\`\`\`\n${report}\n\`\`\``
+        });
+        console.log(`チャンネル ${channelId} に送信しました✨`);
+        return { channelId, ts: response.ts };
       });
+
+      const messageResults = await Promise.all(messagePromises);
+
+      // 全体報告スレッドにリンクを投稿
+      if (getGeneralMessageTs()) {
+        const links = messageResults.map(result =>
+          `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
+        ).join(' / ');
+
+        await client.chat.postMessage({
+          channel: generalChannelId,
+          thread_ts: getGeneralMessageTs(),
+          text: `${userName}さんの稼働報告: ${links}`
+        });
+      } else {
+        reportEmitter.once('reportScheduled', async () => {
+          const links = messageResults.map(result =>
+            `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
+          ).join(' / ');
+
+          await client.chat.postMessage({
+            channel: generalChannelId,
+            thread_ts: getGeneralMessageTs(),
+            text: `${userName}さんの稼働報告: ${links}`
+          });
+        });
+      }
     }
 
     const privateMetadata = JSON.parse(view.private_metadata);
