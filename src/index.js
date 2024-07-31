@@ -42,7 +42,7 @@ function setupEventHandlers(app) {
       const messageTs = await postDailyReportMessage(client, event.user);
       console.log('Message timestamp:', messageTs);
     }
-  });
+  });  
 
   app.action('report_activity', async ({ ack, body, client }) => {
     await ack();
@@ -67,6 +67,17 @@ function setupEventHandlers(app) {
   app.view('submit_setting', async ({ ack, body, view, client }) => {
     await ack();
     await handleSettingSubmission(view, body.user.id);
+  });
+
+  app.message(async ({ message}) => {
+    console.log('message event received:', message);
+    // thread_ts が存在する場合
+    if (message.thread_ts) {
+      console.log(`Thread timestamp: ${message.thread_ts}`);
+    } else {
+      // メッセージがスレッドの一部ではない場合、ts を使用
+      console.log(`Message timestamp: ${message.ts}`);
+    }
   });
 }
 

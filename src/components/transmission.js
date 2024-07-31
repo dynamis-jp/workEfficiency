@@ -43,6 +43,7 @@ export async function handleReportSubmission(client, { user, view }) {
       }
     } else {
       // 既存のチャンネル投稿ロジック
+      // TODO チャンネルにアプリが追加されていなかった場合はばぐるので直せるときに直す
       const messagePromises = userChannels.map(async (channelId) => {
         const response = await client.chat.postMessage({
           channel: channelId,
