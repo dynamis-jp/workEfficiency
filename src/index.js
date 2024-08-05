@@ -1,5 +1,5 @@
-import express from 'express';
-import bodyParser from 'body-parser';
+import fs from 'fs/promises';
+import path from 'path';
 import dotenv from 'dotenv';
 import pkg from '@slack/bolt';
 import { updateHomeTab } from './components/appHome.js';
@@ -8,8 +8,15 @@ import { openSettings, handleSettingSubmission, initializeSettings, settingsEmit
 import { handleReportSubmission } from './components/transmission.js';
 import scheduleReport from './components/generalReport.js';
 import { postDailyReportMessage } from './components/appMessage.js';
+import { processThreadMessage } from './components/threadMessage.js';
+import { handlePost2flask } from '.components/post2flask.js'
 import { exec } from 'child_process';
-import { handlePost2flask } from './components/post2flask.js';
+import { channel } from 'diagnostics_channel';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const { App } = pkg;
 dotenv.config();
@@ -41,6 +48,12 @@ function setupEventHandlers(app) {
       console.log('出勤 reaction detected');
       const messageTs = await postDailyReportMessage(client, event.user);
       console.log('Message timestamp:', messageTs);
+    } else if (event.reaction === 'test') {
+      console.log('Test reaction detected, fetching message details');
+      await processThreadMessage(client, {
+        channelId: event.item.channel,
+        threadTs: event.item.ts
+      }, __dirname);
     }
   });  
 
@@ -69,16 +82,16 @@ function setupEventHandlers(app) {
     await handleSettingSubmission(view, body.user.id);
   });
 
-  app.message(async ({ message}) => {
-    console.log('message event received:', message);
-    // thread_ts が存在する場合
-    if (message.thread_ts) {
-      console.log(`Thread timestamp: ${message.thread_ts}`);
-    } else {
-      // メッセージがスレッドの一部ではない場合、ts を使用
-      console.log(`Message timestamp: ${message.ts}`);
-    }
-  });
+  // app.message(async ({ message}) => {
+  //   console.log('message event received:', message);
+  //   // thread_ts が存在する場合
+  //   if (message.thread_ts) {
+  //     console.log(`Thread timestamp: ${message.thread_ts}`);
+  //   } else {
+  //     // メッセージがスレッドの一部ではない場合、ts を使用
+  //     console.log(`Message timestamp: ${message.ts}`);
+  //   }
+  // });
 }
 
 async function updateAllUserHomeTabs(client) {
@@ -110,7 +123,7 @@ async function startApp() {
   app = createApp();
   setupEventHandlers(app);
 
-  await initializeSettings();  // 設定を初期化
+  await initializeSettings();
   await app.start();
   console.log('⚡️ Bolt app is running!');
 

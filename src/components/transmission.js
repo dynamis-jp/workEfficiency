@@ -1,6 +1,13 @@
 import { getChannels } from './setting.js';
 import { generalChannelId, getGeneralMessageTs, reportEmitter } from './generalReport.js';
 import { getFormattedDate } from './utils.js';
+import { processThreadMessage } from './threadMessage.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// __dirnameをESモジュールで取得する方法
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function handleReportSubmission(client, { user, view }) {
   try {
@@ -42,20 +49,25 @@ export async function handleReportSubmission(client, { user, view }) {
         });
       }
     } else {
-      // 既存のチャンネル投稿ロジック
-      // TODO チャンネルにアプリが追加されていなかった場合はばぐるので直せるときに直す
       const messagePromises = userChannels.map(async (channelId) => {
         const response = await client.chat.postMessage({
           channel: channelId,
           text: `${userName}さんの本日の稼働予定です。\n\n\`\`\`\n${report}\n\`\`\``
         });
         console.log(`チャンネル ${channelId} に送信しました✨`);
-        return { channelId, ts: response.ts };
+
+        const threadTs = response.ts;
+        console.log(`取得したスレッドのタイムスタンプ (threadTs):`, threadTs);
+
+        return { channelId, ts: threadTs };
       });
 
       const messageResults = await Promise.all(messagePromises);
 
-      // 全体報告スレッドにリンクを投稿
+      messageResults.forEach(async ({ channelId, ts }) => {
+        await processThreadMessage(client, { channelId, threadTs: ts }, __dirname);
+      });
+
       if (getGeneralMessageTs()) {
         const links = messageResults.map(result =>
           `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
@@ -90,7 +102,6 @@ export async function handleReportSubmission(client, { user, view }) {
     const formattedDate = getFormattedDate();
     const messageText = `${formattedDate}の稼働報告をお願いいたします✨\n\n稼働報告を行いました🎉`;
 
-    // ダイレクトメッセージ内のメッセージを更新
     const dmChannel = await client.conversations.open({ users: userId });
     if (!dmChannel.ok) {
       throw new Error(`Failed to open DM channel for user ${userId}`);
