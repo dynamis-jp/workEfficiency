@@ -66,7 +66,6 @@ export async function updateHomeTab(client, user) {
         blocks: blocks
       }
     });
-    console.log('appHomeタブに送信しました:', result);
   } catch (error) {
     console.error('アプリホームタブの表示でエラーが発生しました:', error);
   }

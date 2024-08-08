@@ -41,7 +41,7 @@ export async function openForm(client, trigger_id, message) {
         ]
       }
     });
-    console.log('Form opened successfully:', result);
+    console.log('フォームを開きました:', result);
   } catch (error) {
     console.error('Error opening form:', error);
     if (error.data && error.data.error === 'expired_trigger_id') {

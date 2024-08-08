@@ -15,9 +15,9 @@ export async function initializeSettings() {
 async function saveSettings(settings) {
   try {
     await fs.writeFile(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2));
-    console.log('Settings saved successfully');
+    console.log('設定の保存に成功しました');
   } catch (error) {
-    console.error('Error saving settings:', error);
+    console.error('設定の保存中にエラーが発生しました:', error);
     throw error;
   }
 }

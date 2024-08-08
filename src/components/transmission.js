@@ -54,28 +54,29 @@ export async function handleReportSubmission(client, { user, view }) {
 
       const messageResults = await Promise.all(messagePromises);
 
-      // 全体報告スレッドにリンクを投稿
-      if (getGeneralMessageTs()) {
-        const links = messageResults.map(result =>
-          `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
-        ).join(' / ');
+      // 全体報告スレッドに一番目のチャンネルリンクのみを投稿
+      if (getGeneralMessageTs() && messageResults.length > 0) {
+        // 一番目のチャンネルリンクのみを使用
+        const firstChannelResult = messageResults[0];
+        const link = `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${firstChannelResult.channelId}/p${firstChannelResult.ts.replace('.', '')}|View Message>`;
 
         await client.chat.postMessage({
           channel: generalChannelId,
           thread_ts: getGeneralMessageTs(),
-          text: `${userName}さんの稼働報告: ${links}`
+          text: `${userName}さんの稼働報告: ${link}`
         });
       } else {
         reportEmitter.once('reportScheduled', async () => {
-          const links = messageResults.map(result =>
-            `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${result.channelId}/p${result.ts.replace('.', '')}|View Message>`
-          ).join(' / ');
+          if (messageResults.length > 0) {
+            const firstChannelResult = messageResults[0];
+            const link = `<https://${process.env.SLACK_WORKSPACE}.slack.com/archives/${firstChannelResult.channelId}/p${firstChannelResult.ts.replace('.', '')}|View Message>`;
 
-          await client.chat.postMessage({
-            channel: generalChannelId,
-            thread_ts: getGeneralMessageTs(),
-            text: `${userName}さんの稼働報告: ${links}`
-          });
+            await client.chat.postMessage({
+              channel: generalChannelId,
+              thread_ts: getGeneralMessageTs(),
+              text: `${userName}さんの稼働報告: ${link}`
+            });
+          }
         });
       }
     }
