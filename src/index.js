@@ -35,7 +35,6 @@ function setupEventHandlers(app) {
   });
 
   app.event('reaction_added', async ({ event, client }) => {
-    console.log('Reaction added event received:', event);
     if (event.reaction === '出勤') {
       console.log('出勤 reaction detected');
       const messageTs = await postDailyReportMessage(client, event.user);
