@@ -1,14 +1,15 @@
-import express from 'express';
-import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import pkg from '@slack/bolt';
 import { updateHomeTab } from './components/appHome.js';
 import { openForm as reportOpenForm } from './components/reportModal.js';
-import { openSettings, handleSettingSubmission, initializeSettings, settingsEmitter } from './components/setting.js';
+import { openSettings, handleSettingSubmission, initializeSettings, settingsEmitter, getChannels } from './components/setting.js';
 import { handleReportSubmission } from './components/transmission.js';
 import scheduleReport from './components/generalReport.js';
 import { postDailyReportMessage } from './components/appMessage.js';
 import { exec } from 'child_process';
+import { setInterval } from 'timers';
+import { getMessagesForUser } from './components/utils.js';
+import fs from 'fs/promises';
 
 const { App } = pkg;
 dotenv.config();
@@ -102,7 +103,52 @@ async function startApp() {
 
   await updateAllUserHomeTabs(app.client);
   scheduleReport(app);
+
+  const userIdToFilter = 'U03DBCLST6E';
+  const channels = getChannels(userIdToFilter);
+
+  for (const channelId of channels) {
+    console.log(`Fetching messages for user ${userIdToFilter} in channel ${channelId} at startup...`);
+    const result2 = await getMessagesForUser(app.client, userIdToFilter, channelId);
+    // console.log("result2", JSON.stringify(result2, null, 2)); // JSON.stringifyを使って詳細表示
+
+    // TODO:一時的にメッセージをファイルに出力する
+    const filePath2 = `./temp/messages_${userIdToFilter}_${channelId}_2.json`;
+    await writeMessagesToFile(result2, filePath2);
+    console.log(`Messages written to ${filePath2}`);
+  }
+
+  setInterval(async () => {
+    const result3 = await getMessagesForUser(app.client, userIdToFilter, 'U03DBCLST6E');
+
+    // TODO:一時的にメッセージをファイルに出力する
+    const filePath3 = `./temp/messages_${userIdToFilter}_U03DBCLST6E_2.json`;
+    await writeMessagesToFile(result3, filePath3)
+    console.log(`Messages written to ${filePath3}`);
+
+  }, 3600000);
 }
+
+/**
+ * 一時的にファイルに保存
+ */
+async function writeMessagesToFile(messages, filePath) {
+  try {
+    // メッセージをJSON文字列に変換
+    const data = JSON.stringify(messages, null, 2);
+
+    // ディレクトリが存在しない場合は作成
+    const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+    await fs.mkdir(dir, { recursive: true });
+
+    // ファイルに書き込む
+    await fs.writeFile(filePath, data, 'utf8');
+    console.log('Messages successfully written to file');
+  } catch (error) {
+    console.error('Error writing messages to file:', error);
+  }
+}
+
 
 function restartApp() {
   console.log('Restarting the application...');

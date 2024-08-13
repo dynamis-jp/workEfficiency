@@ -11,3 +11,45 @@ export function getFormattedDate() {
 
   return `${month} ${date}日 ${day}`;
 }
+
+export async function getMessagesForUser(client, userId, channelId) {
+  try {
+    const today = new Date();
+    const timezoneOffset = today.getTimezoneOffset() * 60; // タイムゾーンオフセットを考慮
+    const startOfDay = Math.floor(today.setHours(0, 0, 0, 0) / 1000) - timezoneOffset;
+
+    const result = await client.conversations.history({
+      channel: channelId,
+      oldest: startOfDay,
+    });
+
+    const allMessages = result.messages;
+    const userMessages = allMessages.filter(msg => msg.user === userId);
+
+    const userThreadMessages = [];
+
+    for (const msg of userMessages) {
+      if (msg.thread_ts) {
+        const threadResult = await client.conversations.replies({
+          channel: channelId,
+          ts: msg.thread_ts,
+        });
+
+        const threadMessages = threadResult.messages.filter(tmsg => tmsg.user === userId);
+        userThreadMessages.push(...threadMessages);
+        // console.log(`User's thread messages: ${JSON.stringify(threadMessages, null, 2)}`); // JSON.stringifyを使って詳細表示
+      }
+    }
+
+    // console.log(`User's messages: ${JSON.stringify(userMessages, null, 2)}`); // JSON.stringifyを使って詳細表示
+
+    // メッセージとスレッドメッセージを返す
+    return {
+      userMessages,
+      userThreadMessages
+    };
+
+  } catch (error) {
+    console.error('Error fetching user messages:', error);
+  }
+}
